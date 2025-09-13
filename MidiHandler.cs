@@ -24,28 +24,6 @@ namespace MidiPlayer
             return devices;
         }
 
-        public void test()
-        {
-
-            Console.WriteLine("Select the MIDI device");
-            for (int i = 0; i < MidiIn.NumberOfDevices; i++)
-            {
-                Console.WriteLine(i + ":" + MidiIn.DeviceInfo(i).ProductName);
-            }
-            int idx = Int32.Parse(Console.ReadLine());
-
-            device = new MidiIn(idx);
-            // Subscribe to events
-            device.MessageReceived += MidiIn_MessageReceived;
-            device.ErrorReceived += MidiIn_ErrorReceived;
-            // Start receiving messages
-            device.Start();
-            Console.WriteLine("Press any key to stop");
-            Console.ReadKey();
-            device.Stop();
-            device.Dispose();
-        }
-
         void MidiIn_ErrorReceived(object sender, MidiInMessageEventArgs e)
         {
             Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
