@@ -27,6 +27,11 @@ namespace MidiPlayer
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            listBox1.AllowDrop = true;
+            listBox1.Items.Add("Drop 1");
+            listBox1.Items.Add("Drop 2");
+            listBox1.Items.Add("Drop 3");
+
             listView1.ItemSelectionChanged += listViewItemChanged;
             string[] devices = MidiHandler.GetMidiInputDevies();
             if (devices.Length > 0)
@@ -150,6 +155,13 @@ namespace MidiPlayer
             Console.WriteLine("Selection changerd\n" + e.ItemIndex);
         }
 
+        private void ListView1_ItemDrag(Object sender, ItemDragEventArgs e)
+            {
+            // Start the drag-and-drop operation with the list item. 
+            listView1.DoDragDrop(e.Item, DragDropEffects.Move);
+            Console.WriteLine("Item dragged");
+        }
+
         void PrintDictionary()
         {
             foreach (var item in musicItems)
@@ -161,6 +173,36 @@ namespace MidiPlayer
         private void label1_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void listView1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void listBox1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (listBox1.SelectedItem == null) return;
+            listBox1.DoDragDrop(listBox1.SelectedItem, DragDropEffects.Move);
+        }
+
+        private void listBox1_DragEnter(object sender, DragEventArgs e)
+        {
+            if(e.Data.GetDataPresent(typeof(string)))
+                e.Effect = DragDropEffects.Move;
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
+        private void listBox1_DragDrop(object sender, DragEventArgs e)
+        {
+            Point point = listBox1.PointToClient(new Point(e.X, e.Y));
+            int index = this.listBox1.IndexFromPoint(point);
+            if (index < 0) index = this.listBox1.Items.Count - 1;
+            object data = e.Data.GetData(typeof(string));
+            this.listBox1.Items.Remove(data);
+            this.listBox1.Items.Insert(index, data);
+            Console.WriteLine("Item dropped" + data.ToString());
         }
     }
 }
