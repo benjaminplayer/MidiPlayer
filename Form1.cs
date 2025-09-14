@@ -1,25 +1,19 @@
 ﻿using NAudio.Midi;
-using NAudio.Wave;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Data.OleDb;
+using System.Collections;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Globalization;
 using System.Windows.Forms;
-
 namespace MidiPlayer
 {
     public partial class Form1 : Form
     {
-    
+
         private MidiIn selected_midi;
-        private Dictionary<int, string> musicItems = new Dictionary<int, string>();
+        private ArrayList musicPaths = new ArrayList();
         private bool midiAvailable = false;
+        private AudioHandler audioHandler = new AudioHandler();
+        private int audioPlayingIdx = 0;
         public Form1()
         {
             InitializeComponent();
@@ -28,11 +22,12 @@ namespace MidiPlayer
         private void Form1_Load(object sender, EventArgs e)
         {
             listBox1.AllowDrop = true;
-            listBox1.Items.Add("Drop 1");
-            listBox1.Items.Add("Drop 2");
-            listBox1.Items.Add("Drop 3");
+            InitMidiDropDown();
+        }
 
-            listView1.ItemSelectionChanged += listViewItemChanged;
+        private void InitMidiDropDown()
+        {
+            comboBox1.Items.Clear();
             string[] devices = MidiHandler.GetMidiInputDevies();
             if (devices.Length > 0)
             {
@@ -63,42 +58,35 @@ namespace MidiPlayer
                 {
                     // v string da paths od selected files
                     for (int i = 0; i < ofd.FileNames.Length; i++)
-                    { 
-                        Console.WriteLine("Selected file: " + ofd.FileNames[i]);
-                        musicItems.Add(i, ofd.FileNames[i]);
+                    {
+                        if (!musicPaths.Contains(ofd.FileNames[i]))
+                            musicPaths.Add(ofd.FileNames[i]);
                     }
                 }
 
-                Console.WriteLine("Music items in dictionary:");
-                PrintDictionary();
+                Console.WriteLine("Items in an array list:");
+                PrintArrayList(musicPaths);
 
-                //formatta, da list displaya item horizontally
-                listView1.Items.Clear();
-                listView1.Columns.Clear();
-                listView1.Columns.Add("");
-                listView1.View = View.Details;
-                listView1.HeaderStyle = ColumnHeaderStyle.None;
-                
-
-                foreach (var item in musicItems)
+                listBox1.Items.Clear();
+                string[] data;
+                for (int i = 0; i < musicPaths.Count; i++)
                 {
-                    ListViewItem lvi = new ListViewItem(item.Key.ToString()+": " +item.Value);
-                    listView1.Items.Add(lvi);
+                    data = musicPaths[i].ToString().Split('\\');
+                    listBox1.Items.Add(i + ": " + data[data.Length - 1]); // formats the string so only the name of the file is displayed
                 }
-                listView1.Columns[0].Width = -1;
             }
 
         }
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            
-            Console.WriteLine("Selected idx: "+comboBox1.SelectedIndex);
+
+            Console.WriteLine("Selected idx: " + comboBox1.SelectedIndex);
             if (!midiAvailable)
                 return;
             if
-                (selected_midi !=null)
-            { 
+                (selected_midi != null)
+            {
                 selected_midi.Stop();
                 selected_midi.Dispose();
             }
@@ -108,6 +96,7 @@ namespace MidiPlayer
             selected_midi.Start();
         }
 
+        #region Midi Signal Handlers
         void midiIn_ErrorReceived(object sender, MidiInMessageEventArgs e)
         {
             Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
@@ -116,68 +105,50 @@ namespace MidiPlayer
 
         void midiIn_MessageReceived(object sender, MidiInMessageEventArgs e)
         {
-           /* Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
-                e.Timestamp, e.RawMessage, e.MidiEvent));*/
 
-            Console.WriteLine("Event: "+ e.MidiEvent.ToString());
+            Console.WriteLine("Event: " + e.MidiEvent.ToString());
             string[] midiEvent = e.MidiEvent.ToString().Split(' ');
 
             //try parsing the string value to int
             try
             {
-                string path = @"C:\Users\benja\Music\Illuminate Intro Sample FinalMix.mp3"; //default file
+                //string path = @"C:\Users\FireBlazeTSETSR\Downloads\Get back to the kitchen [m5mMcQCTH4c].mp3"; //default file
 
-                if (int.Parse(midiEvent[5]) == 13 && int.Parse(midiEvent[midiEvent.Length-1]) == 127)
+                if (int.Parse(midiEvent[5]) == 13 && int.Parse(midiEvent[midiEvent.Length - 1]) == 127)
                 {
-                    
-                    using (var audioFile = new AudioFileReader(path))
-                    using (var outputDevice = new WaveOutEvent())
+                    //handle later
+                    if (musicPaths.Count == 0)
                     {
-                        outputDevice.Init(audioFile);
-                        outputDevice.Play();
-                        while (outputDevice.PlaybackState == PlaybackState.Playing)
-                        {
-                            Thread.Sleep(1000);
-                        }
+                        return;
                     }
-
+                    if (!audioHandler.IsPlaying() && audioPlayingIdx < musicPaths.Count)
+                    {
+                        audioHandler.Play(musicPaths[audioPlayingIdx].ToString());
+                        listBox1.Invoke((MethodInvoker)(() =>
+                        {
+                            listBox1.Items.RemoveAt(0);
+                            UpdateListBox();
+                        }));
+                        audioPlayingIdx++;
+                    }
+                    else if (audioHandler.IsPlaying())
+                    {
+                        audioHandler.Stop();
+                    }
+                    
                 }
 
-            } catch (Exception ex)
-            { 
-                Console.WriteLine("Exception: "+ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception: " + ex.Message);
             }
 
         }
-
+        #endregion
         void listViewItemChanged(object sender, ListViewItemSelectionChangedEventArgs e)
         {
             Console.WriteLine("Selection changerd\n" + e.ItemIndex);
-        }
-
-        private void ListView1_ItemDrag(Object sender, ItemDragEventArgs e)
-            {
-            // Start the drag-and-drop operation with the list item. 
-            listView1.DoDragDrop(e.Item, DragDropEffects.Move);
-            Console.WriteLine("Item dragged");
-        }
-
-        void PrintDictionary()
-        {
-            foreach (var item in musicItems)
-            {
-                Console.WriteLine("Key: "+item.Key+" Value: "+item.Value);
-            }
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void listView1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
         }
 
         private void listBox1_MouseDown(object sender, MouseEventArgs e)
@@ -188,7 +159,7 @@ namespace MidiPlayer
 
         private void listBox1_DragEnter(object sender, DragEventArgs e)
         {
-            if(e.Data.GetDataPresent(typeof(string)))
+            if (e.Data.GetDataPresent(typeof(string)))
                 e.Effect = DragDropEffects.Move;
             else
                 e.Effect = DragDropEffects.None;
@@ -201,8 +172,51 @@ namespace MidiPlayer
             if (index < 0) index = this.listBox1.Items.Count - 1;
             object data = e.Data.GetData(typeof(string));
             this.listBox1.Items.Remove(data);
-            this.listBox1.Items.Insert(index, data);
-            Console.WriteLine("Item dropped" + data.ToString());
+            this.listBox1.Items.Insert(index, data.ToString());
+
+            //update the musicPaths arraylist accordingly
+            int oldIdx = int.Parse(data.ToString().Split(':')[0]);
+            UpdateListBox();
+            UpdatePathList(oldIdx, index);
+
+        }
+
+        private void UpdateListBox()
+        {
+            for (int i = 0; i < listBox1.Items.Count; i++)
+                listBox1.Items[i] = i + ":" + listBox1.Items[i].ToString().Split(':')[1];
+        }
+
+        private void UpdatePathList(int oldIdx, int newIdx)
+        {
+            ArrayList sorted = (ArrayList)musicPaths.Clone();
+            for (int i = newIdx; i > oldIdx; i--)
+                sorted[i - 1] = musicPaths[i].ToString();
+            sorted[newIdx] = musicPaths[oldIdx];
+
+            musicPaths = (ArrayList)sorted.Clone();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (selected_midi != null)
+            {
+                selected_midi.Stop();
+                selected_midi.Dispose();
+            }
+        }
+
+        #region Debugging functions
+        void PrintArrayList(ArrayList a)
+        {
+            foreach (var item in a)
+                Console.WriteLine(item.ToString());
+        }
+        #endregion
+
+        private void refreshMidiInBtn_Click(object sender, EventArgs e)
+        {
+            InitMidiDropDown();
         }
     }
 }
