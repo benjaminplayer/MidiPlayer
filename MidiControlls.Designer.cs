@@ -1,6 +1,6 @@
 ﻿namespace MidiPlayer
 {
-    partial class Form1
+    partial class MidiControlls
     {
         /// <summary>
         /// Required designer variable.
@@ -35,13 +35,14 @@
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.refreshMidiInBtn = new System.Windows.Forms.Button();
             this.label3 = new System.Windows.Forms.Label();
-            this.progressLog1 = new NAudio.Utils.ProgressLog();
+            this.volumeSlider1 = new NAudio.Gui.VolumeSlider();
             this.SuspendLayout();
             // 
             // label2
             // 
             this.label2.AutoSize = true;
             this.label2.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label2.ForeColor = System.Drawing.Color.White;
             this.label2.Location = new System.Drawing.Point(12, 26);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(240, 24);
@@ -62,6 +63,7 @@
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label1.ForeColor = System.Drawing.Color.White;
             this.label1.Location = new System.Drawing.Point(12, 114);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(208, 24);
@@ -80,11 +82,14 @@
             // 
             // listBox1
             // 
+            this.listBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(34)))), ((int)(((byte)(34)))), ((int)(((byte)(34)))));
+            this.listBox1.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.listBox1.ForeColor = System.Drawing.Color.White;
             this.listBox1.FormattingEnabled = true;
-            this.listBox1.Location = new System.Drawing.Point(16, 241);
+            this.listBox1.Location = new System.Drawing.Point(484, 64);
             this.listBox1.Margin = new System.Windows.Forms.Padding(2);
             this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(250, 147);
+            this.listBox1.Size = new System.Drawing.Size(250, 143);
             this.listBox1.TabIndex = 7;
             this.listBox1.DragDrop += new System.Windows.Forms.DragEventHandler(this.listBox1_DragDrop);
             this.listBox1.DragEnter += new System.Windows.Forms.DragEventHandler(this.listBox1_DragEnter);
@@ -93,9 +98,9 @@
             // refreshMidiInBtn
             // 
             this.refreshMidiInBtn.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.refreshMidiInBtn.Location = new System.Drawing.Point(259, 61);
+            this.refreshMidiInBtn.Location = new System.Drawing.Point(258, 64);
             this.refreshMidiInBtn.Name = "refreshMidiInBtn";
-            this.refreshMidiInBtn.Size = new System.Drawing.Size(75, 23);
+            this.refreshMidiInBtn.Size = new System.Drawing.Size(75, 21);
             this.refreshMidiInBtn.TabIndex = 8;
             this.refreshMidiInBtn.Text = "Refresh";
             this.refreshMidiInBtn.UseVisualStyleBackColor = true;
@@ -105,28 +110,29 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(532, 26);
+            this.label3.ForeColor = System.Drawing.Color.White;
+            this.label3.Location = new System.Drawing.Point(567, 26);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(120, 24);
+            this.label3.Size = new System.Drawing.Size(69, 24);
             this.label3.TabIndex = 9;
-            this.label3.Text = "Now Playing:";
+            this.label3.Text = "Queue";
             // 
-            // progressLog1
+            // volumeSlider1
             // 
-            this.progressLog1.BackColor = System.Drawing.SystemColors.ControlDarkDark;
-            this.progressLog1.Location = new System.Drawing.Point(469, 177);
-            this.progressLog1.Name = "progressLog1";
-            this.progressLog1.Padding = new System.Windows.Forms.Padding(1);
-            this.progressLog1.Size = new System.Drawing.Size(286, 21);
-            this.progressLog1.TabIndex = 10;
+            this.volumeSlider1.Location = new System.Drawing.Point(692, 256);
+            this.volumeSlider1.Name = "volumeSlider1";
+            this.volumeSlider1.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.volumeSlider1.Size = new System.Drawing.Size(96, 16);
+            this.volumeSlider1.TabIndex = 10;
             // 
-            // Form1
+            // MidiControlls
             // 
             this.AccessibleName = "MidiPlayer";
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(18)))), ((int)(((byte)(18)))), ((int)(((byte)(18)))));
             this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Controls.Add(this.progressLog1);
+            this.Controls.Add(this.volumeSlider1);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.refreshMidiInBtn);
             this.Controls.Add(this.listBox1);
@@ -134,7 +140,8 @@
             this.Controls.Add(this.label1);
             this.Controls.Add(this.comboBox1);
             this.Controls.Add(this.label2);
-            this.Name = "Form1";
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.Name = "MidiControlls";
             this.Text = "MidiPlayer";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
@@ -150,7 +157,7 @@
         private System.Windows.Forms.ListBox listBox1;
         private System.Windows.Forms.Button refreshMidiInBtn;
         private System.Windows.Forms.Label label3;
-        private NAudio.Utils.ProgressLog progressLog1;
+        private NAudio.Gui.VolumeSlider volumeSlider1;
     }
 }
 

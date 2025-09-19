@@ -1,23 +1,39 @@
 ﻿using NAudio.Wave;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace MidiPlayer
 {
     internal class AudioHandler
     {
-        private WaveOutEvent outputDevice;
+        private WaveOutEvent waveOutputDevice;
+        private DirectSoundOut dsOutputDevice;
+        private AsioOut asioOutDevice;
+        private int asioOutputChannel;
         private Thread audioThread;
-        public AudioHandler() { }
+        private float volume = 1f;
 
-        public AudioHandler(WaveOutEvent outputDevice)
+        #region Constructors
+        public AudioHandler() { }
+        public AudioHandler(WaveOutEvent waveOutputDevice)
         {
-            this.outputDevice = outputDevice;
+            this.waveOutputDevice = waveOutputDevice;
         }
 
+        public AudioHandler(DirectSoundOut dsOutputDevice)
+        {
+            this.dsOutputDevice = dsOutputDevice;
+        }
+
+        public AudioHandler(AsioOut asioOutDevice, int asioOutputChannel)
+        {
+            this.asioOutDevice = asioOutDevice;
+            this.asioOutputChannel = asioOutputChannel;
+        }
+        #endregion
         public void Play(string path)
         {
-            Console.WriteLine("musicThread == null || !musicThread.IsAlive"+(audioThread == null || !audioThread.IsAlive));
             if (audioThread == null || !audioThread.IsAlive)
             {
                 audioThread = new Thread(() => PlayAudio(path));
@@ -32,13 +48,25 @@ namespace MidiPlayer
 
         public void Stop()
         {
-            if (outputDevice != null)
+            if (waveOutputDevice != null)
             {
-                outputDevice.Stop();
-                outputDevice.Dispose();
-                outputDevice = null;
+                waveOutputDevice.Stop();
+                waveOutputDevice.Dispose();
+                waveOutputDevice = null;
             }
-            
+            else if (dsOutputDevice != null)
+            {
+                dsOutputDevice.Stop();
+                dsOutputDevice.Dispose();
+                dsOutputDevice = null;
+            }
+            else
+            {
+                asioOutDevice.Stop();
+                asioOutDevice.Dispose();
+                asioOutDevice = null;
+            }
+
             if (audioThread != null && audioThread.IsAlive)
             {
                 try
@@ -48,8 +76,8 @@ namespace MidiPlayer
 
                 }
                 catch (ThreadAbortException e)
-                { 
-                    
+                {
+
                 }
             }
         }
@@ -61,23 +89,67 @@ namespace MidiPlayer
 
         private void PlayAudio(string path)
         {
-            try
+
+            if (waveOutputDevice != null)
             {
-                using (var audioFile = new AudioFileReader(path))
-                using (var outputDevice = new WaveOutEvent())
+                try
                 {
-                    outputDevice.Init(audioFile);
-                    outputDevice.Play();
-                    while (outputDevice.PlaybackState == PlaybackState.Playing)
+                    using (var audioFile = new AudioFileReader(path))
                     {
-                        Thread.Sleep(1000);
+                        waveOutputDevice.Init(audioFile);
+                        waveOutputDevice.Volume = volume;
+                        waveOutputDevice.Play();
+                        while (waveOutputDevice.PlaybackState == PlaybackState.Playing)
+                        {
+                            Thread.Sleep(1000);
+                        }
+                    
                     }
+                    
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error playing music: {ex.Message}");
                 }
             }
-            catch (Exception ex)
+            else if (asioOutDevice != null)
             {
-                Console.WriteLine($"Error playing music: {ex.Message}");
+                asioOutDevice.ChannelOffset = asioOutputChannel;
+                using (var reader = new AudioFileReader(path))
+                { 
+                    asioOutDevice.Init(reader);
+                    reader.Volume = volume;
+                    asioOutDevice.Play();
+                    while(asioOutDevice.PlaybackState == PlaybackState.Playing)
+                        Thread.Sleep(1000);
+                }
             }
+            else if (dsOutputDevice != null)
+            {
+                try
+                {
+                    using (var audioFile = new AudioFileReader(path))
+                    {
+                        dsOutputDevice.Init(audioFile);
+                        dsOutputDevice.Volume = volume;
+                        waveOutputDevice.Play();
+                        while (waveOutputDevice.PlaybackState == PlaybackState.Playing)
+                        {
+                            Thread.Sleep(1000);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error playing music: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("No audio playback selected");
+            }
+
+            
         }
 
     }
