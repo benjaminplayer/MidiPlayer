@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace MidiPlayer
 {
@@ -23,11 +24,13 @@ namespace MidiPlayer
             ASIO
         }
 
-
         private bool midiAvailable;
         public MidiIn selected_midi;
         public DeviceType deviceType;
         private static AudioHandler audioHandler;
+        private static Dictionary<string, string> dataMap = new Dictionary<string, string>();
+        private static readonly string CONFIG_DIRECTORY_PATH = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MidiPlayer");
+        private static readonly string CONFIG_FILE_PATH = Path.Combine(CONFIG_DIRECTORY_PATH, "settings.txt");
         public Settings()
         {
             InitializeComponent();
@@ -35,6 +38,7 @@ namespace MidiPlayer
 
         private void Settings_Load(object sender, EventArgs e)
         {
+            InitDictionary();
             InitMidiDropDown();
             InitDeviceTypeMenu();
         }
@@ -49,14 +53,17 @@ namespace MidiPlayer
                 foreach (string device in devices)
                 {
                     comboBox1.Items.Add(device);
+                    //ce je item enak settings shrani idx in ga iz loopa dodaj
                 }
+
             }
             else
             {
                 midiAvailable = false;
                 comboBox1.Items.Add("NO AVAILIBLE MIDI DEVICES");
             }
-            comboBox1.SelectedIndex = 0;
+            
+            //comboBox1.SelectedIndex = 0;
         }
 
         private void InitDeviceTypeMenu()
@@ -67,11 +74,13 @@ namespace MidiPlayer
             OutputTypeComboBox.SelectedIndex = 0;
         }
 
+        //MIDI selection changed
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             Console.WriteLine("Selected idx: " + comboBox1.SelectedIndex);
             if (!midiAvailable)
                 return;
+            dataMap["midiin"] = comboBox1.Text.ToUpper();
             if
                 (selected_midi != null)
             {
@@ -94,6 +103,7 @@ namespace MidiPlayer
             return devices;
         }
 
+        //Device type selection changed
         private void OutputTypeComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             OutputDevices.Items.Clear();
@@ -135,6 +145,7 @@ namespace MidiPlayer
                     break;
             }
             Console.WriteLine("Selected device: " + deviceType.ToString());
+            dataMap["outputtype"] = deviceType.ToString();
         }
 
 
@@ -165,5 +176,122 @@ namespace MidiPlayer
             InitMidiDropDown();
         }
 
+        public void SaveFile()
+        {
+            try
+            {
+                if (!File.Exists(CONFIG_FILE_PATH))
+                    CreateConfigFile();
+
+                string content;
+                using (StreamReader sr = new StreamReader(CONFIG_FILE_PATH))
+                { 
+                    content = sr.ReadToEnd();
+                }
+
+                FormatData(content);
+
+
+
+                // file structure: inputtype, outputtype, output device, midiin
+                foreach (var item in dataMap)
+                { 
+                    
+                }
+
+            }
+            catch (Exception e)
+            { 
+                Console.WriteLine("Error saving settings: " + e.Message);
+            }
+           // StreamWriter sw = new StreamWriter();
+        }
+
+        private void InitDictionary()
+        {
+            string content;
+
+            using (StreamReader sr = new StreamReader(CONFIG_FILE_PATH))
+            {
+                content = sr.ReadToEnd();
+            }
+
+            FormatData(content);
+
+        }
+
+        private void CreateConfigFile()
+        {
+            string[] defaultData =
+            {
+                "#Settings configuration file for MidiPlayer v.0.1.0",
+                "#DO NOT EDIT THE FILES CONTENT, AS IT COULD BREAK FUNCTIONALITY OF THE APP",
+                "",
+                "#INPUT TYPE",
+                "inputtype=",
+                "",
+                "#TYPE OF OUTPUT DEVICE",
+                "outputtype=",
+                "",
+                "#OUTPUT DEVICE",
+                "outputdevice=",
+                "",
+                "#MIDI INPUT DEVICE",
+                "midiin=0"
+            };
+
+            try
+            {
+                if(!Directory.Exists(CONFIG_DIRECTORY_PATH))
+                    Directory.CreateDirectory (CONFIG_DIRECTORY_PATH);
+                File.Create (CONFIG_FILE_PATH);
+
+                using (StreamWriter sw = new StreamWriter(CONFIG_FILE_PATH))
+                { 
+                    foreach(string line in defaultData)
+                        sw.WriteLine(line);
+                }
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error while trying to create a config file" + e.Message);
+            }
+
+        }
+
+        //Formats the read data from the config file
+        private void FormatData(string data)
+        {
+            string[] splitData = data.Split('\n'), d;
+            
+            for(int i = 0; i < splitData.Length; i++)
+            {
+                if (splitData[i].Length != 1 && splitData[i][0] != '#')
+                {
+                    d = splitData[i].Trim('\r','\n').Split('=');
+                    if (!dataMap.ContainsKey(d[0]))
+                        dataMap.Add(d[0], d[1]);
+                    else
+                    {
+                        dataMap[d[0]] = d[1];
+                    }
+                        Console.WriteLine("Key:" + d[0] + "; Value:" + d[1]);
+                }
+            }
+
+        }
+
+        private Dictionary<string, string> FormDataToDictionary()
+        {
+            Dictionary<string, string> data = new Dictionary<string, string>();
+
+            return data;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            SaveFile();
+        }
     }
 }
