@@ -159,6 +159,7 @@
             this.radioButton1.TabStop = true;
             this.radioButton1.Text = "MIDI";
             this.radioButton1.UseVisualStyleBackColor = true;
+            this.radioButton1.Click += new System.EventHandler(this.radioButton1_Click);
             // 
             // radioButton2
             // 
@@ -172,6 +173,7 @@
             this.radioButton2.TabStop = true;
             this.radioButton2.Text = "Keyboard";
             this.radioButton2.UseVisualStyleBackColor = true;
+            this.radioButton2.Click += new System.EventHandler(this.radioButton2_Click);
             // 
             // flowLayoutPanel1
             // 
@@ -214,6 +216,7 @@
             this.Name = "Settings";
             this.Text = "Form2";
             this.Load += new System.EventHandler(this.Settings_Load);
+            this.Leave += new System.EventHandler(this.Settings_Leave);
             this.flowLayoutPanel1.ResumeLayout(false);
             this.flowLayoutPanel1.PerformLayout();
             this.ResumeLayout(false);

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +24,13 @@ namespace MidiPlayer
 
         private void MainContainer_Load(object sender, EventArgs e)
         {
+            if (!File.Exists(Settings.CONFIG_FILE_PATH))
+            { 
+                Settings s = new Settings();
+                s.LoadDefaults();
+                s.Dispose();
+            }
+
             midiControllsForm = new MidiControlls();
             midiControllsForm.MdiParent = this;
             midiControllsForm.FormClosed += MidiControllsClosed;
