@@ -10,12 +10,31 @@ namespace MidiPlayer
         private WaveOutEvent waveOutputDevice;
         private DirectSoundOut dsOutputDevice;
         private AsioOut asioOutDevice;
+        private IWavePlayer player;
         private int asioOutputChannel;
         private Thread audioThread;
         private float volume = 1f;
 
         #region Constructors
-        public AudioHandler() { }
+        public AudioHandler() 
+        { 
+            
+        }
+
+        public AudioHandler(Object outputDevice)
+        {
+            try
+            {
+                //try casting the object into a player object
+                this.player = (IWavePlayer)outputDevice;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+        }
+
+        /*
         public AudioHandler(WaveOutEvent waveOutputDevice)
         {
             this.waveOutputDevice = waveOutputDevice;
@@ -30,7 +49,7 @@ namespace MidiPlayer
         {
             this.asioOutDevice = asioOutDevice;
             this.asioOutputChannel = asioOutputChannel;
-        }
+        }*/
         #endregion
         public void Play(string path)
         {
@@ -47,7 +66,8 @@ namespace MidiPlayer
         }
 
         public void Stop()
-        {
+        { 
+
             if (waveOutputDevice != null)
             {
                 waveOutputDevice.Stop();
@@ -89,6 +109,20 @@ namespace MidiPlayer
 
         private void PlayAudio(string path)
         {
+            //TODO: Instead of creating objects for specific audioDevices, just use a class
+            //from which they inherit from -> player
+            //test this code
+            if (player != null)
+            {
+                using (var audioFile = new AudioFileReader(path))
+                {
+                    player.Init(audioFile);
+                    player.Volume = volume;
+                    player.Play();
+                    while (player.PlaybackState == PlaybackState.Playing)
+                        Thread.Sleep(1000);
+                }
+            }
 
             if (waveOutputDevice != null)
             {

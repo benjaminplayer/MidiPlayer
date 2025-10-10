@@ -16,6 +16,7 @@ namespace MidiPlayer
     {
         private MidiControlls midiControllsForm;
         private Settings SettingsForm;
+        private Player player;
 
         public MainContainer()
         {
@@ -70,6 +71,19 @@ namespace MidiPlayer
             }
         }
 
+        private void button3_Click(object sender, EventArgs e)
+        {
+            if (player == null)
+            {
+                player = new Player();
+                player.FormClosed += PlayerClosed;
+                player.MdiParent = this;
+                player.Dock = DockStyle.Fill;
+                player.Show();
+            }
+            else
+                player.Activate();
+        }
 
         #region Settings Close handlers
 
@@ -82,6 +96,12 @@ namespace MidiPlayer
         {
             SettingsForm = null;
         }
+
+        private void PlayerClosed(object sender, FormClosedEventArgs e)
+        {
+            player = null;
+        }
+
         #endregion
 
         #region Midi Signal Handlers

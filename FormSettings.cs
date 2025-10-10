@@ -36,11 +36,10 @@ namespace MidiPlayer
         #endregion
 
         private bool midiAvailable;
-        public MidiIn selected_midi;
-        public DeviceType deviceType;
-        public InputMode inputMode;
-        private static AudioHandler audioHandler;
-        private static Dictionary<string, string> dataMap = new Dictionary<string, string>();
+        private MidiIn selected_midi;
+        private DeviceType deviceType;
+        private InputMode inputMode;
+        public static Dictionary<string, string> dataMap = new Dictionary<string, string>();
         private static readonly string CONFIG_DIRECTORY_PATH = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MidiPlayer");
         public static readonly string CONFIG_FILE_PATH = Path.Combine(CONFIG_DIRECTORY_PATH, "settings.txt");
         public Settings()
@@ -50,13 +49,18 @@ namespace MidiPlayer
 
         private void Settings_Load(object sender, EventArgs e)
         {
+            InitSettings();
+        }
+
+        #region Init methods
+        private void InitSettings()
+        {
             InitDictionary();
             InitMidiDropDown();
             InitDeviceTypeMenu();
             InitRadioBtns();
         }
-
-        #region Init methods
+        
         private void InitMidiDropDown()
         {
             comboBox1.Items.Clear();
@@ -112,6 +116,7 @@ namespace MidiPlayer
             OutputTypeComboBox.SelectedIndex = idx;
         }
 
+        //loads data from a settings file to a dictionary
         private void InitDictionary()
         {
             if (!File.Exists(CONFIG_FILE_PATH))
@@ -289,15 +294,10 @@ namespace MidiPlayer
                     content = sr.ReadToEnd();
                 }
 
-                Console.WriteLine("Content string:");
-                Console.WriteLine(content);
-
-                Console.WriteLine("Content as chars:");
-                PrintStringAsChars(content);
                 // file structure: inputtype, outputtype, output device, midiin
                 string[] splitString = content.Trim('\r').Split('\n'), d;
                 using (StreamWriter sw = new StreamWriter(CONFIG_FILE_PATH))
-                    for (int i = 0; i < splitString.Length ; i++)
+                    for (int i = 0; i < splitString.Length; i++)
                     {
                         if (splitString[i].Length > 1 && splitString[i][0] != '#')
                         {
@@ -321,18 +321,13 @@ namespace MidiPlayer
                             PrintStringAsChars(splitString[i].Trim('\r'));
                             sw.WriteLine(splitString[i].Trim('\r'));
                         }
-                        
+
                     }
-
-
-
             }
             catch (Exception e)
-            { 
+            {
                 Console.WriteLine("Error saving settings: " + e.StackTrace);
-                
             }
-           // StreamWriter sw = new StreamWriter();
         }
 
         private void PrintStringAsChars(string s)
@@ -398,7 +393,6 @@ namespace MidiPlayer
                     d = splitData[i].Trim('\r', '\n').Split('=');
                     if (d.Length <= 1) continue;
                     dat.Add(d[0], d[1]);
-                    Console.WriteLine("Key:" + d[0] + "; Value:" + d[1]);
                 }
             }
             return dat;
@@ -424,6 +418,24 @@ namespace MidiPlayer
         private void Settings_Leave(object sender, EventArgs e)
         {
             SaveFile();
+        }
+
+        public Dictionary<string,string> GetSettingsData()
+        {
+            if (dataMap == null || dataMap.Count == 0)
+            {
+                InitDictionary();
+            }
+            return dataMap;
+        }
+
+        public new void Dispose()
+            { Dispose(true); }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            //InitDictionary();
+
         }
     }
 }
