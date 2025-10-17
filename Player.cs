@@ -2,12 +2,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace MidiPlayer
@@ -16,8 +12,11 @@ namespace MidiPlayer
     {
         private ArrayList musicPaths = new ArrayList();
         private Dictionary<string, string> settings_data;
-        private Timer musicPlayTimer;
         private MidiIn midiDevice;
+        private Thread t_progressBar;
+        private int elapsed = 0;
+        Device d = null;
+        int trackPlaying = 0;
         public Player()
         {
             InitializeComponent();
@@ -29,6 +28,9 @@ namespace MidiPlayer
             Settings settings = new Settings();
             settings_data = settings.GetSettingsData();
             settings.Dispose();
+
+            //musicPaths.Add("C:\\Users\\benja\\Music\\Illuminate Intro Sample FinalMix.mp3");
+            //musicPaths.Add("C:\\Users\\benja\\Music\\Napalm Sample.mp3");
         }
 
         private void fileAddButton_Click(object sender, EventArgs e)
@@ -66,7 +68,7 @@ namespace MidiPlayer
 
         private void PrintArrayList(ArrayList ar)
         {
-            foreach(var item in ar)
+            foreach (var item in ar)
                 Console.WriteLine(item.ToString());
         }
 
@@ -112,7 +114,7 @@ namespace MidiPlayer
         private void ListBox1_MouseDown(object sender, MouseEventArgs e)
         {
             if (ListBox1.SelectedItem == null) return;
-                ListBox1.DoDragDrop(ListBox1.SelectedItem, DragDropEffects.Move);
+            ListBox1.DoDragDrop(ListBox1.SelectedItem, DragDropEffects.Move);
         }
         #endregion
 
@@ -123,8 +125,44 @@ namespace MidiPlayer
 
         private void button1_Click(object sender, EventArgs e)
         {
-            string device = settings_data["outputdevice"];
-            AudioHandler ah = new AudioHandler();
+            //TODO: Remove items when the song ends
+
+            if (d == null)
+                d = new Device(settings_data);
+            if (trackPlaying >= musicPaths.Count)
+                return;
+            d.Play(musicPaths[trackPlaying].ToString());
+
+            if (!d.Playing())
+            {
+                ListBox1.Items.Remove(ListBox1.Items[trackPlaying]);
+                UpdateListBox();
+                trackPlaying++;
+            }
+        }
+
+        private void UpdateSongProgressBar()
+        {
+            Console.WriteLine("Started progrss bar thread");
+            //songProgressBar.Maximum = (int)d.GetSongLength().TotalSeconds;
+            songProgressBar.Invoke((Action)(() =>
+            {
+                songProgressBar.Minimum = 0;
+                songProgressBar.Maximum = (int)d.GetSongLength().TotalSeconds;
+                songProgressBar.Value = 0;
+                songProgressBar.Step = 1;
+            }));
+
+            while (d.Playing())
+            { 
+                songProgressBar.Invoke(new Action(() =>
+                { 
+                    songProgressBar.PerformStep();
+                    Console.WriteLine("Perform Step");
+                }));
+                Thread.Sleep(1000);
+            }
+            t_progressBar.Abort();
         }
     }
 

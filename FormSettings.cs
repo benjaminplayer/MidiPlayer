@@ -6,9 +6,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
+using System.Diagnostics.Eventing.Reader;
 
 namespace MidiPlayer
 {
+    //TODO: Refractor -> ASIO store names; others -> store INTS
     public partial class Settings : Form
     {
         #region Enums
@@ -91,11 +93,13 @@ namespace MidiPlayer
             comboBox1.SelectedIndex = idx;
         }
 
+        //TODO: Fix so wave device types store indexes not the names
         private void InitDeviceTypeMenu()
         {
             int idx = 0;
             string val = "";
             dataMap.TryGetValue("outputtype", out val);
+
             OutputTypeComboBox.Items.Clear();
             foreach (DeviceType dt in Enum.GetValues(typeof(DeviceType)))
             { 
@@ -207,27 +211,30 @@ namespace MidiPlayer
             OutputDevices.Items.Clear();
             int idx = 0;
             string val = "";
-            dataMap.TryGetValue("outputdevice", out val);
+            if (!dataMap.TryGetValue("outputdevice", out val))
+            {
+                throw new Exception("The device does not exist!");
+            }
 
             switch (deviceType = (DeviceType)Enum.Parse(typeof(DeviceType), OutputTypeComboBox.SelectedIndex.ToString()))
             {
                 case DeviceType.WINDOWS_AUDIO:
                     var devices = new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+                    int deviceIdx ;
                     foreach (var device in devices)
                     {
                         OutputDevices.Items.Add(device.ToString());
-                        if(val.Equals(device.ToString()))
+                        if(int.TryParse(dataMap["outputdevice"],out deviceIdx) && deviceIdx== OutputDevices.Items.IndexOf(device.ToString()))
                             idx = OutputDevices.Items.IndexOf(device.ToString());
-                        Console.WriteLine(device.ToString());
                     }
                     break;
                 case DeviceType.DIRECT_SOUND:
                     foreach (var dev in DirectSoundOut.Devices)
                     {
                         OutputDevices.Items.Add($" {dev.Description}");
-                        if (val.Equals(dev.ToString()))
-                            idx = OutputDevices.Items.IndexOf(dev.ToString());
-                        Console.WriteLine($"{dev.Description}");
+                        if (dev.Guid.ToString().Equals(dataMap["outputdevice"]))
+                            idx = OutputDevices.Items.IndexOf(dev.Description);
+
                     }
                     break;
                 case DeviceType.ASIO:
@@ -239,9 +246,8 @@ namespace MidiPlayer
                     foreach (var asio in AsioOut.GetDriverNames())
                     {
                         OutputDevices.Items.Add(asio.ToString());
-                        if (val.Equals(asio.ToString()))
-                            idx = OutputDevices.Items.IndexOf(asio.ToString());
-                        Console.WriteLine(asio);
+                        if (dataMap["outputdevice"].Equals(asio))
+                            idx = OutputDevices.Items.IndexOf(asio);
                     }
                     break;
                 default:
@@ -250,14 +256,36 @@ namespace MidiPlayer
             }
             Console.WriteLine("Selected device: " + deviceType.ToString());
             dataMap["outputtype"] = deviceType.ToString();
-            dataMap["outputdevice"] = OutputDevices.Items[idx].ToString();
             OutputDevices.SelectedIndex = idx;
         }
 
         private void OutputDevices_SelectedIndexChanged(object sender, EventArgs e)
         {
-            dataMap["outputdevice"] = OutputDevices.Text;
+            switch (deviceType)
+            { 
+                case DeviceType.WINDOWS_AUDIO:
+                    dataMap["outputdevice"] = OutputDevices.SelectedIndex + "";
+                    break;
+                case DeviceType.DIRECT_SOUND:
+                    dataMap["outputdevice"] = GetWaveOutGuid(OutputDevices.SelectedIndex); 
+                    break;
+                case DeviceType.ASIO:
+                    dataMap["outputdevice"] = OutputDevices.SelectedItem.ToString();
+                    break;
+            }
+        }
 
+        private string GetWaveOutGuid(int idx)
+        {
+            int i = 0;
+            foreach (var dev in DirectSoundOut.Devices)
+            {
+                if(i == idx)
+                    return dev.Guid.ToString();
+                i++;
+            }
+
+            return null;
         }
 
         private void OutputDevices_DropDown(object sender, EventArgs e)

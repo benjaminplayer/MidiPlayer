@@ -12,7 +12,7 @@ namespace MidiPlayer
         private MidiIn selected_midi;
         private ArrayList musicPaths = new ArrayList();
         private bool midiAvailable = false;
-        private AudioHandler audioHandler = new AudioHandler();
+        private Device audioHandler = new Device();
         private int audioPlayingIdx = 0;
         private Settings settingsForm;
         public MidiControlls()
@@ -121,7 +121,7 @@ namespace MidiPlayer
                     {
                         return;
                     }
-                    if (!audioHandler.IsPlaying() && audioPlayingIdx < musicPaths.Count)
+                    /*if (!audioHandler.() && audioPlayingIdx < musicPaths.Count)
                     {
                         audioHandler.Play(musicPaths[audioPlayingIdx].ToString());
                         //invokes Method Invoker so the update will be run on the original thread
@@ -136,7 +136,7 @@ namespace MidiPlayer
                     {
                         audioHandler.Stop();
                     }
-                    
+                    */
                 }
 
             }

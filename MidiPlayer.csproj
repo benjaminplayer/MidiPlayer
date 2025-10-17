@@ -95,7 +95,7 @@
     <Compile Include="MidiControlls.Designer.cs">
       <DependentUpon>MidiControlls.cs</DependentUpon>
     </Compile>
-    <Compile Include="AudioHandler.cs" />
+    <Compile Include="Device.cs" />
     <Compile Include="Player.cs">
       <SubType>Form</SubType>
     </Compile>
