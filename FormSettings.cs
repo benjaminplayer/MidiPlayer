@@ -38,7 +38,6 @@ namespace MidiPlayer
         #endregion
 
         private bool midiAvailable;
-        private MidiIn selected_midi;
         private DeviceType deviceType;
         private InputMode inputMode;
         public static Dictionary<string, string> dataMap = new Dictionary<string, string>();
@@ -164,7 +163,6 @@ namespace MidiPlayer
             { 
                 dataMap[DataDictionaryItems.MIDIIN.ToString().ToLower()] = midiDevices[0];
                 inputMode = InputMode.MIDI;
-                selected_midi = new MidiIn(0);
                 midiAvailable = true;
             }
             dataMap[DataDictionaryItems.MIDIIN.ToString().ToLower()] = "0";
@@ -183,16 +181,6 @@ namespace MidiPlayer
             if (!midiAvailable)
                 return;
             dataMap["midiin"] = comboBox1.Text;
-            if
-                (selected_midi != null)
-            {
-                selected_midi.Stop();
-                selected_midi.Dispose();
-            }
-            selected_midi = new MidiIn(comboBox1.SelectedIndex);
-            selected_midi.MessageReceived += MainContainer.midiIn_MessageReceived;
-            selected_midi.ErrorReceived += MainContainer.midiIn_ErrorReceived;
-            selected_midi.Start();
         }
 
         public string[] GetMidiInputDevies()

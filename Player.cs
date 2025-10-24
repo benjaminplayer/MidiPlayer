@@ -29,8 +29,91 @@ namespace MidiPlayer
             settings_data = settings.GetSettingsData();
             settings.Dispose();
 
+            InitMidiDevice();
+
             //musicPaths.Add("C:\\Users\\benja\\Music\\Illuminate Intro Sample FinalMix.mp3");
             //musicPaths.Add("C:\\Users\\benja\\Music\\Napalm Sample.mp3");
+        }
+
+        private void InitMidiDevice()
+        {
+            if (settings_data["midiin"] == null)
+            {
+                return;
+            }
+
+            if (!TryCreateDevice(out midiDevice))
+            {
+                throw new Exception("Unable to create device!");
+            }
+
+            midiDevice.MessageReceived += midiIn_MessageReceived;
+            midiDevice.ErrorReceived += midiIn_ErrorReceived;
+            midiDevice.Start();
+        }
+
+
+        private void midiIn_ErrorReceived(object sender, MidiInMessageEventArgs e)
+        {
+            Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
+                e.Timestamp, e.RawMessage, e.MidiEvent));
+        }
+
+        void midiIn_MessageReceived(object sender, MidiInMessageEventArgs e)
+        {
+            Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
+                e.Timestamp, e.RawMessage, e.MidiEvent));
+            string[] split_message = e.MidiEvent.ToString().Split(' ');
+            if (e.MidiEvent.CommandCode == MidiCommandCode.ControlChange && int.Parse(split_message[split_message.Length - 3]) == 33 && int.Parse(split_message[split_message.Length-1]) == 127)
+            { 
+                if (d == null)
+                    d = new Device(settings_data);
+                Console.WriteLine(d.GetSongsPlayed());
+                if (d.GetSongsPlayed() >= musicPaths.Count)
+                    return;
+                d.Play(musicPaths[d.GetSongsPlayed()].ToString());
+
+            }
+
+            /*if (!d.Playing())
+            {
+                UpdateListBox();
+            }*/
+
+        }
+
+        private bool TryCreateDevice(out MidiIn device)
+        {
+            device = null;
+            try
+            {
+                int idx;
+                if ((idx = FindMidiDeviceIndex()) != -1)
+                {
+                    device = new MidiIn(idx);
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine("idx: "+idx);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+
+                return false;
+            }
+        }
+
+        private int FindMidiDeviceIndex()
+        {
+            for (int i = 0; i < MidiIn.NumberOfDevices; i++)
+            {
+                if (settings_data["midiin"].Equals(MidiIn.DeviceInfo(i).ProductName))
+                    return i;
+            }
+            return -1;
         }
 
         private void fileAddButton_Click(object sender, EventArgs e)
