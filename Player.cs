@@ -129,15 +129,14 @@ namespace MidiPlayer
 
             if (d == null)
                 d = new Device(settings_data);
-            if (trackPlaying >= musicPaths.Count)
+            Console.WriteLine(d.GetSongsPlayed());
+            if (d.GetSongsPlayed() >= musicPaths.Count)
                 return;
-            d.Play(musicPaths[trackPlaying].ToString());
+            d.Play(musicPaths[d.GetSongsPlayed()].ToString());
 
             if (!d.Playing())
             {
-                ListBox1.Items.Remove(ListBox1.Items[trackPlaying]);
                 UpdateListBox();
-                trackPlaying++;
             }
         }
 

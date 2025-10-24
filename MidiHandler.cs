@@ -1,17 +1,32 @@
 ﻿using NAudio.CoreAudioApi;
 using NAudio.Midi;
 using System;
+using System.Collections.Generic;
 
 namespace MidiPlayer
 {
     internal class MidiHandler
     {
         private MidiIn device;
-
+        //private Dictionary<string, string> data;
+        MidiHandler(Dictionary<string, string> data)
+        {
+            device = new MidiIn(GetDeviceIndex(data["midiin"]));
+        }
 
         MidiHandler(MidiIn device)
         {
             this.device = device;
+        }
+
+        private int GetDeviceIndex(string name)
+        {
+            for (int i = 0; i < MidiIn.NumberOfDevices; i++)
+            {
+                if (name == MidiIn.DeviceInfo(i).ProductName)
+                    return i;
+            }
+            return -1;
         }
 
         public static string[] GetMidiInputDevies()
@@ -24,13 +39,13 @@ namespace MidiPlayer
             return devices;
         }
 
-        void MidiIn_ErrorReceived(object sender, MidiInMessageEventArgs e)
+        public void MidiIn_ErrorReceived(object sender, MidiInMessageEventArgs e)
         {
             Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
                 e.Timestamp, e.RawMessage, e.MidiEvent));
         }
 
-        void MidiIn_MessageReceived(object sender, MidiInMessageEventArgs e)
+        public void MidiIn_MessageReceived(object sender, MidiInMessageEventArgs e)
         {
             Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
                 e.Timestamp, e.RawMessage, e.MidiEvent));

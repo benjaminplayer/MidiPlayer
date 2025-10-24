@@ -5,6 +5,7 @@ using System.IO;
 using System.Media;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Windows.Forms;
 
 namespace MidiPlayer
 {
@@ -16,16 +17,22 @@ namespace MidiPlayer
         private TimeSpan trackLength;
         private Thread t_playing;
         private Dictionary<string, string> data;
+        private int SongsPlayed = 0;
+        private ListBox lb;
 
         public Device()
         { }
 
-        public Device(Dictionary<string, string> data, int asioOutChannel = 0)
+        public Device(Dictionary<string, string> data, int asioOutChannel = 0, ListBox lb = null)
         {
             // set the output device type
             // TODO refractor the code a bit 
             this.AsioOutChannel = asioOutChannel;
             this.data = data;
+            if(lb != null)
+                this.lb = lb;
+            else
+                this.lb = new ListBox();
         }
 
         // figure this shit out
@@ -37,7 +44,7 @@ namespace MidiPlayer
             track = path;
 
             if (t_playing != null && t_playing.IsAlive)
-            { 
+            {
                 Stop();
                 return;
             }
@@ -67,6 +74,8 @@ namespace MidiPlayer
                     Thread.Sleep(1000);
                 }
             }
+            SongsPlayed++;
+            //UpdateList();
             //Stop();
         }
 
@@ -96,6 +105,7 @@ namespace MidiPlayer
         {
             outputDevice.Stop();
             outputDevice.Dispose();
+            SongsPlayed++;
 
             try
             {
@@ -129,5 +139,21 @@ namespace MidiPlayer
                 return t_playing.IsAlive;
             return false;
         }
+
+        public void UpdateList()
+        {
+            lb.Invoke((Action)(() =>
+            {
+                for (int i = 0; i < lb.Items.Count; i++)
+                    lb.Items[i] = i + ":" + lb.Items[i].ToString().Split(':')[1];
+            }));
+
+        }
+
+        public int GetSongsPlayed()
+        {
+            return this.SongsPlayed;
+        }
+
     }
 }
