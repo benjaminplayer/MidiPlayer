@@ -37,7 +37,7 @@ namespace MidiPlayer
 
         private void InitMidiDevice()
         {
-            if (settings_data["midiin"] == null)
+            if (settings_data["midiin"] == null || settings_data["midiin"].Length == 0)
             {
                 return;
             }
@@ -64,15 +64,23 @@ namespace MidiPlayer
             Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
                 e.Timestamp, e.RawMessage, e.MidiEvent));
             string[] split_message = e.MidiEvent.ToString().Split(' ');
-            if (e.MidiEvent.CommandCode == MidiCommandCode.ControlChange && int.Parse(split_message[split_message.Length - 3]) == 33 && int.Parse(split_message[split_message.Length-1]) == 127)
-            { 
-                if (d == null)
-                    d = new Device(settings_data);
-                Console.WriteLine(d.GetSongsPlayed());
-                if (d.GetSongsPlayed() >= musicPaths.Count)
-                    return;
-                d.Play(musicPaths[d.GetSongsPlayed()].ToString());
+            try
+            {
+                if (e.MidiEvent.CommandCode == MidiCommandCode.ControlChange && int.Parse(split_message[split_message.Length - 3]) == 33 && int.Parse(split_message[split_message.Length - 1]) == 127)
+                {
+                    if (d == null)
+                        d = new Device(settings_data);
+                    Console.WriteLine(d.GetSongsPlayed());
+                    if (d.GetSongsPlayed() >= musicPaths.Count)
+                        return;
+                    d.Play(musicPaths[d.GetSongsPlayed()].ToString());
 
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Invalid format");
+                Console.WriteLine(ex.ToString());
             }
 
             /*if (!d.Playing())
@@ -140,6 +148,8 @@ namespace MidiPlayer
 
                 ListBox1.Items.Clear();
                 string[] data;
+                ListBox1.DrawMode = DrawMode.OwnerDrawFixed;
+                ListBox1.DrawItem += ListBox_DrawItem;
                 for (int i = 0; i < musicPaths.Count; i++)
                 {
                     data = musicPaths[i].ToString().Split('\\');
@@ -178,12 +188,37 @@ namespace MidiPlayer
 
         private void UpdatePathList(int oldIdx, int newIdx)
         {
+            
+            Console.WriteLine("Old array list");
+            PrintArrayList(musicPaths);
+            Console.WriteLine();
+
             ArrayList sorted = (ArrayList)musicPaths.Clone();
+        /*
+            if (oldIdx > newIdx)
+            {
+                
+                oldIdx = oldIdx ^ newIdx;
+                newIdx = newIdx ^ oldIdx;
+                oldIdx = oldIdx ^ newIdx;
+
+                for (int i = oldIdx; i < newIdx; i++)
+                {
+                    sorted[i + 1] = musicPaths[i].ToString();
+                }
+
+
+            }
+        */
             for (int i = newIdx; i > oldIdx; i--)
+            {
                 sorted[i - 1] = musicPaths[i].ToString();
+            }
             sorted[newIdx] = musicPaths[oldIdx];
 
             musicPaths = (ArrayList)sorted.Clone();
+            
+        
         }
 
         private void ListBox1_DragEnter(object sender, DragEventArgs e)
@@ -200,6 +235,33 @@ namespace MidiPlayer
             ListBox1.DoDragDrop(ListBox1.SelectedItem, DragDropEffects.Move);
         }
         #endregion
+
+        private void ListBox_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0)
+                return;
+
+            Color bg = ColorTranslator.FromHtml("#252525"), line = ColorTranslator.FromHtml("#3A3A3A");
+            //line = Color.White;
+            Rectangle rect = e.Bounds;
+            float borderSize = 1.5f;
+
+            e.Graphics.FillRectangle(new SolidBrush(bg),e.Bounds);
+            e.Graphics.DrawString(ListBox1.Items[e.Index].ToString(), ListBox1.Font, Brushes.White, e.Bounds);
+            if(e.Index != ListBox1.Items.Count - 1)
+                using (Pen p = new Pen(line, borderSize))
+                {
+                    e.Graphics.DrawLine(
+                        p,
+                        rect.Left,
+                        rect.Bottom - 1,     // y position
+                        rect.Right,
+                        rect.Bottom - 1
+                    );
+                }
+            //e.DrawFocusRectangle();
+
+        }
 
         private void tableLayoutPanel1_Paint(object sender, PaintEventArgs e)
         {
@@ -245,6 +307,14 @@ namespace MidiPlayer
                 Thread.Sleep(1000);
             }
             t_progressBar.Abort();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (d == null) return;
+            if (d.Playing())
+                d.Stop();
+            d.SetSongsPlayed();
         }
     }
 

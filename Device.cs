@@ -155,5 +155,9 @@ namespace MidiPlayer
             return this.SongsPlayed;
         }
 
+        public void SetSongsPlayed(int idx = 0)
+        { 
+            this.SongsPlayed = idx;
+        }
     }
 }
