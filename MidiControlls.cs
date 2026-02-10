@@ -6,15 +6,16 @@ using System.Globalization;
 using System.Windows.Forms;
 namespace MidiPlayer
 {
-    public partial class Form1 : Form
+    public partial class MidiControlls : Form
     {
 
         private MidiIn selected_midi;
         private ArrayList musicPaths = new ArrayList();
         private bool midiAvailable = false;
-        private AudioHandler audioHandler = new AudioHandler();
+        private Device audioHandler;
         private int audioPlayingIdx = 0;
-        public Form1()
+        private Settings settingsForm;
+        public MidiControlls()
         {
             InitializeComponent();
         }
@@ -22,7 +23,7 @@ namespace MidiPlayer
         private void Form1_Load(object sender, EventArgs e)
         {
             listBox1.AllowDrop = true;
-            InitMidiDropDown();
+            //InitMidiDropDown();
         }
 
         private void InitMidiDropDown()
@@ -56,7 +57,7 @@ namespace MidiPlayer
                 DialogResult dr = ofd.ShowDialog();
                 if (dr == System.Windows.Forms.DialogResult.OK)
                 {
-                    // v string da paths od selected files
+                    // string stores the path of selected files
                     for (int i = 0; i < ofd.FileNames.Length; i++)
                     {
                         if (!musicPaths.Contains(ofd.FileNames[i]))
@@ -112,7 +113,6 @@ namespace MidiPlayer
             //try parsing the string value to int
             try
             {
-                //string path = @"C:\Users\FireBlazeTSETSR\Downloads\Get back to the kitchen [m5mMcQCTH4c].mp3"; //default file
 
                 if (int.Parse(midiEvent[5]) == 13 && int.Parse(midiEvent[midiEvent.Length - 1]) == 127)
                 {
@@ -121,9 +121,10 @@ namespace MidiPlayer
                     {
                         return;
                     }
-                    if (!audioHandler.IsPlaying() && audioPlayingIdx < musicPaths.Count)
+                    /*if (!audioHandler.() && audioPlayingIdx < musicPaths.Count)
                     {
                         audioHandler.Play(musicPaths[audioPlayingIdx].ToString());
+                        //invokes Method Invoker so the update will be run on the original thread
                         listBox1.Invoke((MethodInvoker)(() =>
                         {
                             listBox1.Items.RemoveAt(0);
@@ -135,7 +136,7 @@ namespace MidiPlayer
                     {
                         audioHandler.Stop();
                     }
-                    
+                    */
                 }
 
             }
@@ -217,6 +218,32 @@ namespace MidiPlayer
         private void refreshMidiInBtn_Click(object sender, EventArgs e)
         {
             InitMidiDropDown();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (settingsForm == null)
+            {
+                settingsForm = new Settings();
+                settingsForm.FormClosed += SettingsFormClosed;
+                settingsForm.MdiParent = this;
+                settingsForm.Dock = DockStyle.Fill;
+                settingsForm.Show();
+                //settingsForm.Show();
+            }else
+            {
+                settingsForm.Activate();
+            }
+        }
+
+        private void SettingsFormClosed(object sender, FormClosedEventArgs e)
+        {
+            settingsForm = null;
+        }
+
+        private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
