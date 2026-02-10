@@ -12,7 +12,7 @@ namespace MidiPlayer
         private MidiIn selected_midi;
         private ArrayList musicPaths = new ArrayList();
         private bool midiAvailable = false;
-        private Device audioHandler = new Device();
+        private Device audioHandler;
         private int audioPlayingIdx = 0;
         private Settings settingsForm;
         public MidiControlls()

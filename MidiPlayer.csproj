@@ -22,6 +22,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -96,6 +97,7 @@
       <DependentUpon>MidiControlls.cs</DependentUpon>
     </Compile>
     <Compile Include="Device.cs" />
+    <Compile Include="MusicItem.cs" />
     <Compile Include="Player.cs">
       <SubType>Form</SubType>
     </Compile>

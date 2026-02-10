@@ -1,12 +1,11 @@
-﻿using NAudio.Midi;
+﻿using NAudio.CoreAudioApi;
+using NAudio.Midi;
 using NAudio.Wave;
-using NAudio.CoreAudioApi;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Windows.Forms;
 using System.IO;
-using System.Diagnostics.Eventing.Reader;
+using System.Windows.Forms;
 
 namespace MidiPlayer
 {
@@ -66,8 +65,7 @@ namespace MidiPlayer
         {
             comboBox1.Items.Clear();
             string[] devices = GetMidiInputDevies();
-            string val = "";
-            dataMap.TryGetValue("midiin", out val);
+            dataMap.TryGetValue("midiin", out string val);
             int idx = 0;
             if (devices.Length > 0)
             {
@@ -92,12 +90,10 @@ namespace MidiPlayer
             comboBox1.SelectedIndex = idx;
         }
 
-        //TODO: Fix so wave device types store indexes not the names
         private void InitDeviceTypeMenu()
         {
             int idx = 0;
-            string val = "";
-            dataMap.TryGetValue("outputtype", out val);
+            dataMap.TryGetValue("outputtype", out string val);
 
             OutputTypeComboBox.Items.Clear();
             foreach (DeviceType dt in Enum.GetValues(typeof(DeviceType)))
@@ -117,10 +113,22 @@ namespace MidiPlayer
             }
 
             OutputTypeComboBox.SelectedIndex = idx;
+
+            if (!deviceType.Equals(DeviceType.ASIO))
+            {
+                AsioChannel_Label.Visible = false;
+                AsioChannel_Drop.Visible = false;
+            }
+            else
+            {
+                AsioChannel_Label.Visible = true;
+                AsioChannel_Drop.Visible = true;
+            }
+
         }
 
         //loads data from a settings file to a dictionary
-        private void InitDictionary()
+        private static void InitDictionary()
         {
             if (!File.Exists(CONFIG_FILE_PATH))
                 CreateConfigFile();
@@ -154,28 +162,31 @@ namespace MidiPlayer
         }
         #endregion
 
+        //TODO: Make this static
         public void LoadDefaults()
         {
-            if(!File.Exists(CONFIG_FILE_PATH))
+            Console.WriteLine("Load defaults");
+            if (!File.Exists(CONFIG_FILE_PATH))
                 CreateConfigFile();
             string[] midiDevices = GetMidiInputDevies();
             if (midiDevices.Length > 0)
-            { 
+            {
                 dataMap[DataDictionaryItems.MIDIIN.ToString().ToLower()] = midiDevices[0];
                 inputMode = InputMode.MIDI;
                 midiAvailable = true;
             }
             dataMap[DataDictionaryItems.MIDIIN.ToString().ToLower()] = "0";
+            dataMap[DataDictionaryItems.INPUTTYPE.ToString().ToLower()] = InputMode.KEYBOARD.ToString();
             inputMode = InputMode.KEYBOARD;
             dataMap[DataDictionaryItems.OUTPUTTYPE.ToString().ToLower()] = DeviceType.WINDOWS_AUDIO.ToString();
             dataMap[DataDictionaryItems.OUTPUTDEVICE.ToString().ToLower()] = new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active)[0].ToString();
-
+            dataMap["asio_channel"] = "0";
             SaveFile();
 
         }
 
         //MIDI selection changed
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        private void ComboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             Console.WriteLine("Selected idx: " + comboBox1.SelectedIndex);
             if (!midiAvailable)
@@ -198,8 +209,7 @@ namespace MidiPlayer
         {
             OutputDevices.Items.Clear();
             int idx = 0;
-            string val = "";
-            if (!dataMap.TryGetValue("outputdevice", out val))
+            if (!dataMap.TryGetValue("outputdevice", out _))
             {
                 throw new Exception("The device does not exist!");
             }
@@ -208,13 +218,26 @@ namespace MidiPlayer
             {
                 case DeviceType.WINDOWS_AUDIO:
                     var devices = new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
-                    int deviceIdx ;
-                    foreach (var device in devices)
+                    string target;
+
+                    //tries to parse the data
+                    try { target = new MMDeviceEnumerator().GetDevice(dataMap["outputdevice"]).ToString();}
+                    catch (ArgumentException)
                     {
-                        OutputDevices.Items.Add(device.ToString());
-                        if(int.TryParse(dataMap["outputdevice"],out deviceIdx) && deviceIdx== OutputDevices.Items.IndexOf(device.ToString()))
-                            idx = OutputDevices.Items.IndexOf(device.ToString());
+                        //if parsing fails, sets the target as the default audio output
+                        var tgt = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                        dataMap["outputdevice"] = tgt.ID;
+                        target = tgt.ToString();
+                        tgt.Dispose();
                     }
+
+                    for(int i = 0; i < devices.Count;i++)
+                    {
+                        OutputDevices.Items.Add(devices[i].ToString());
+                        if (target.Equals(devices[i].ToString()))
+                            idx = i;
+                    }
+                    Device.UpdateOutput(new WasapiOut(new MMDeviceEnumerator().GetDevice(dataMap["outputdevice"]),AudioClientShareMode.Shared,true,100));
                     break;
                 case DeviceType.DIRECT_SOUND:
                     foreach (var dev in DirectSoundOut.Devices)
@@ -225,6 +248,7 @@ namespace MidiPlayer
 
                     }
                     break;
+                    //TODO: Figure out how to fill the menu :)
                 case DeviceType.ASIO:
                     if (AsioOut.GetDriverNames().Length == 0)
                     {
@@ -242,9 +266,42 @@ namespace MidiPlayer
                     Console.WriteLine("Something went wrong!");
                     break;
             }
-            Console.WriteLine("Selected device: " + deviceType.ToString());
             dataMap["outputtype"] = deviceType.ToString();
             OutputDevices.SelectedIndex = idx;
+
+            if (!deviceType.Equals(DeviceType.ASIO))
+            {
+                AsioChannel_Label.Visible = false;
+                AsioChannel_Drop.Visible = false;
+            }
+            else
+            {
+                AsioChannel_Label.Visible = true;
+                AsioChannel_Drop.Visible = true;
+                Console.WriteLine("Passing arg: "+ OutputDevices.SelectedItem.ToString());
+                GetAsioChannelOutputs(OutputDevices.SelectedItem.ToString());
+            }
+
+        }
+
+        private void GetAsioChannelOutputs(string deviceName)
+        {
+            Console.WriteLine("Called with arg: "+deviceName);
+            try
+            {
+                using (AsioOut ao = new AsioOut(deviceName))
+                {
+                    Console.WriteLine("out:"+ao.NumberOfOutputChannels);
+                    Console.WriteLine("in:"+ao.NumberOfInputChannels);
+                    for (int i = 0; i < ao.NumberOfOutputChannels; i++)
+                        AsioChannel_Drop.Items.Add("OUT: "+(i+1));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+            
         }
 
         private void OutputDevices_SelectedIndexChanged(object sender, EventArgs e)
@@ -252,15 +309,29 @@ namespace MidiPlayer
             switch (deviceType)
             { 
                 case DeviceType.WINDOWS_AUDIO:
-                    dataMap["outputdevice"] = OutputDevices.SelectedIndex + "";
+                    //Updates the device info in the datamap, and the device class
+                    string deviceID = GetOutputID(OutputDevices.Items[OutputDevices.SelectedIndex].ToString());
+                    Device.UpdateOutput(new WasapiOut(new MMDeviceEnumerator().GetDevice(deviceID), AudioClientShareMode.Shared,true,100));
                     break;
                 case DeviceType.DIRECT_SOUND:
                     dataMap["outputdevice"] = GetWaveOutGuid(OutputDevices.SelectedIndex); 
                     break;
                 case DeviceType.ASIO:
+                    GetAsioChannelOutputs(OutputDevices.SelectedItem.ToString());
                     dataMap["outputdevice"] = OutputDevices.SelectedItem.ToString();
+                    dataMap["asio_channel"] = AsioChannel_Drop.SelectedIndex.ToString();
                     break;
             }
+        }
+
+        private string GetOutputID(string name)
+        {
+            var devices = new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render,DeviceState.Active);
+            foreach (var device in devices)
+            {
+                if (device.ToString().Equals(name)) return device.ID;
+            }
+            return "";
         }
 
         private string GetWaveOutGuid(int idx)
@@ -293,7 +364,7 @@ namespace MidiPlayer
             cb.DropDownWidth = width;
         }
 
-        private void refreshMidiInBtn_Click(object sender, EventArgs e)
+        private void RefreshMidiInBtn_Click(object sender, EventArgs e)
         {
             InitMidiDropDown();
         }
@@ -306,9 +377,7 @@ namespace MidiPlayer
             {
                 string content;
                 using (StreamReader sr = new StreamReader(CONFIG_FILE_PATH))
-                { 
                     content = sr.ReadToEnd();
-                }
 
                 // file structure: inputtype, outputtype, output device, midiin
                 string[] splitString = content.Trim('\r').Split('\n'), d;
@@ -317,26 +386,17 @@ namespace MidiPlayer
                     {
                         if (splitString[i].Length > 1 && splitString[i][0] != '#')
                         {
+                            //d[0] == key; d[1] == value(probs)
                             d = splitString[i].Split('=');
                             if (d.Length > 1 && !dataMap[d[0]].Equals(d[1]))
-                            {
                                 sw.Write(d[0] + "=" + dataMap[d[0]]);
-                                Console.Write(d[0] + "=" + dataMap[d[0]]);
-                            }
                             else
-                            {
                                 sw.Write(splitString[i]);
-                                //Console.WriteLine(splitString[i]);
-                            }
-                            if (i != splitString.Length - 1)
+                            if (i != splitString.Length - 2)
                                 sw.WriteLine();
                         }
                         else
-                        {
-                            //remove carrage return char, bc for some reason it exists there :/
-                            PrintStringAsChars(splitString[i].Trim('\r'));
-                            sw.WriteLine(splitString[i].Trim('\r'));
-                        }
+                            sw.WriteLine(splitString[i].Trim('\r')); //remove carage return char, bc for some reason it exists there :/
 
                     }
             }
@@ -346,17 +406,7 @@ namespace MidiPlayer
             }
         }
 
-        private void PrintStringAsChars(string s)
-        {
-            foreach (char c in s.ToCharArray())
-            { 
-                Console.Write((int)c + " ");
-                if((int)c == 10)
-                    Console.WriteLine();
-            }
-        }
-
-        private void CreateConfigFile()
+        private static void CreateConfigFile()
         {
             string[] defaultData =
             {
@@ -372,6 +422,9 @@ namespace MidiPlayer
                 "#OUTPUT DEVICE",
                 "outputdevice=",
                 "",
+                "#ASIO output channel used: (Default = 0)",
+                "asio_channel=",
+                "",
                 "#MIDI INPUT DEVICE",
                 "midiin=0"
             };
@@ -383,8 +436,8 @@ namespace MidiPlayer
                 File.Create (CONFIG_FILE_PATH).Dispose();
 
                 using (StreamWriter sw = new StreamWriter(CONFIG_FILE_PATH))
-                { 
-                    foreach(string line in defaultData)
+                {
+                    foreach (string line in defaultData)
                         sw.WriteLine(line);
                 }
 
@@ -397,7 +450,7 @@ namespace MidiPlayer
         }
 
         //Formats the read data from the config file
-        private Dictionary<string,string> FormatData(string data)
+        private static Dictionary<string,string> FormatData(string data)
         {
             Dictionary<string,string> dat = new Dictionary<string,string>();
             string[] splitData = data.Split('\n'), d;
@@ -436,7 +489,7 @@ namespace MidiPlayer
             SaveFile();
         }
 
-        public Dictionary<string,string> GetSettingsData()
+        public static Dictionary<string,string> GetSettingsData()
         {
             if (dataMap == null || dataMap.Count == 0)
             {
@@ -453,5 +506,6 @@ namespace MidiPlayer
             //InitDictionary();
 
         }
+
     }
 }

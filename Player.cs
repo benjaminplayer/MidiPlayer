@@ -1,6 +1,5 @@
 ﻿using NAudio.Midi;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Threading;
@@ -10,7 +9,7 @@ namespace MidiPlayer
 {
     public partial class Player : Form
     {
-        private ArrayList musicPaths = new ArrayList();
+        private readonly List<MusicItem> musicPaths = new List<MusicItem>();
         private Dictionary<string, string> settings_data;
         private MidiIn midiDevice;
         private Thread t_progressBar;
@@ -25,14 +24,9 @@ namespace MidiPlayer
         private void Player_Load(object sender, EventArgs e)
         {
             //load settings config into a dictionary
-            Settings settings = new Settings();
-            settings_data = settings.GetSettingsData();
-            settings.Dispose();
-
+            settings_data = Settings.GetSettingsData();
             InitMidiDevice();
 
-            //musicPaths.Add("C:\\Users\\benja\\Music\\Illuminate Intro Sample FinalMix.mp3");
-            //musicPaths.Add("C:\\Users\\benja\\Music\\Napalm Sample.mp3");
         }
 
         private void InitMidiDevice()
@@ -52,7 +46,6 @@ namespace MidiPlayer
             midiDevice.Start();
         }
 
-
         private void midiIn_ErrorReceived(object sender, MidiInMessageEventArgs e)
         {
             Console.WriteLine(String.Format("Time {0} Message 0x{1:X8} Event {2}",
@@ -69,7 +62,8 @@ namespace MidiPlayer
                 if (e.MidiEvent.CommandCode == MidiCommandCode.ControlChange && int.Parse(split_message[split_message.Length - 3]) == 33 && int.Parse(split_message[split_message.Length - 1]) == 127)
                 {
                     if (d == null)
-                        d = new Device(settings_data);
+                        d = new Device();
+                        //d = new Device(settings_data);
                     Console.WriteLine(d.GetSongsPlayed());
                     if (d.GetSongsPlayed() >= musicPaths.Count)
                         return;
@@ -129,40 +123,35 @@ namespace MidiPlayer
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
                 ofd.InitialDirectory = "c:\\";
-                ofd.Filter = "Audio files | *.MP3; *WAV | All files |*.*";
+                ofd.Filter = "Audio files | *.MP3; *.WAV | All files |*.*";
                 ofd.Multiselect = true;
                 ofd.Title = "Select the audio files to be played";
                 DialogResult dr = ofd.ShowDialog();
                 if (dr == System.Windows.Forms.DialogResult.OK)
                 {
                     // string stores the path of selected files
-                    for (int i = 0; i < ofd.FileNames.Length; i++)
+                    MusicItem item;
+                    int itemIndex = (musicPaths.Count == 0) ? 0: musicPaths.Count+1;
+                    for (int i = 0; i < ofd.FileNames.Length; i++, itemIndex++)
                     {
-                        if (!musicPaths.Contains(ofd.FileNames[i]))
-                            musicPaths.Add(ofd.FileNames[i]);
+                        item = new MusicItem(i, ofd.FileNames[i]);
+                        if (!musicPaths.Contains(item))
+                            musicPaths.Add(item);
                     }
                 }
 
-                Console.WriteLine("Items in an array list:");
-                PrintArrayList(musicPaths);
-
-                ListBox1.Items.Clear();
-                string[] data;
-                ListBox1.DrawMode = DrawMode.OwnerDrawFixed;
-                ListBox1.DrawItem += ListBox_DrawItem;
-                for (int i = 0; i < musicPaths.Count; i++)
-                {
-                    data = musicPaths[i].ToString().Split('\\');
-                    ListBox1.Items.Add(i + ": " + data[data.Length - 1]); // formats the string so only the name of the file is displayed
-                }
+                InitQueueListBox();
             }
 
         }
 
-        private void PrintArrayList(ArrayList ar)
+        private void InitQueueListBox()
         {
-            foreach (var item in ar)
-                Console.WriteLine(item.ToString());
+            ListBox1.Items.Clear();
+            ListBox1.DrawMode = DrawMode.OwnerDrawFixed;
+            ListBox1.DrawItem += ListBox_DrawItem;
+            for (int i = 0; i < musicPaths.Count; i++)
+                ListBox1.Items.Add(i + ": " + musicPaths[i].GetFileName()); // formats the string so only the name of the file is displayed
         }
 
         #region List box drag and drop fucntionality
@@ -189,36 +178,15 @@ namespace MidiPlayer
         private void UpdatePathList(int oldIdx, int newIdx)
         {
             
-            Console.WriteLine("Old array list");
-            PrintArrayList(musicPaths);
-            Console.WriteLine();
+            musicPaths[oldIdx].SetId(newIdx);
+            if (oldIdx < newIdx)
+                for (int i = newIdx; i > oldIdx; i--)
+                    musicPaths[i].SetId(i - 1);
+            else
+                for (int i = newIdx; i < oldIdx; i++)
+                    musicPaths[i].SetId(i+1);
 
-            ArrayList sorted = (ArrayList)musicPaths.Clone();
-        /*
-            if (oldIdx > newIdx)
-            {
-                
-                oldIdx = oldIdx ^ newIdx;
-                newIdx = newIdx ^ oldIdx;
-                oldIdx = oldIdx ^ newIdx;
-
-                for (int i = oldIdx; i < newIdx; i++)
-                {
-                    sorted[i + 1] = musicPaths[i].ToString();
-                }
-
-
-            }
-        */
-            for (int i = newIdx; i > oldIdx; i--)
-            {
-                sorted[i - 1] = musicPaths[i].ToString();
-            }
-            sorted[newIdx] = musicPaths[oldIdx];
-
-            musicPaths = (ArrayList)sorted.Clone();
-            
-        
+            musicPaths.Sort();
         }
 
         private void ListBox1_DragEnter(object sender, DragEventArgs e)
@@ -273,40 +241,18 @@ namespace MidiPlayer
             //TODO: Remove items when the song ends
 
             if (d == null)
-                d = new Device(settings_data);
+                d = new Device();
             Console.WriteLine(d.GetSongsPlayed());
             if (d.GetSongsPlayed() >= musicPaths.Count)
                 return;
-            d.Play(musicPaths[d.GetSongsPlayed()].ToString());
+            d.Play(musicPaths[d.GetSongsPlayed()].GetPath());
 
-            if (!d.Playing())
+            if (d.Playing())
             {
+                Console.WriteLine("Updating lb");
+                ListBox1.Items.RemoveAt(0);
                 UpdateListBox();
             }
-        }
-
-        private void UpdateSongProgressBar()
-        {
-            Console.WriteLine("Started progrss bar thread");
-            //songProgressBar.Maximum = (int)d.GetSongLength().TotalSeconds;
-            songProgressBar.Invoke((Action)(() =>
-            {
-                songProgressBar.Minimum = 0;
-                songProgressBar.Maximum = (int)d.GetSongLength().TotalSeconds;
-                songProgressBar.Value = 0;
-                songProgressBar.Step = 1;
-            }));
-
-            while (d.Playing())
-            { 
-                songProgressBar.Invoke(new Action(() =>
-                { 
-                    songProgressBar.PerformStep();
-                    Console.WriteLine("Perform Step");
-                }));
-                Thread.Sleep(1000);
-            }
-            t_progressBar.Abort();
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -314,7 +260,9 @@ namespace MidiPlayer
             if (d == null) return;
             if (d.Playing())
                 d.Stop();
+            //resets the songs played counter to 0 and reinitalizes the queue display
             d.SetSongsPlayed();
+            InitQueueListBox();
         }
     }
 
