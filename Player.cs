@@ -2,20 +2,18 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Threading;
 using System.Windows.Forms;
 
 namespace MidiPlayer
 {
     public partial class Player : Form
     {
-        private readonly List<MusicItem> musicPaths = new List<MusicItem>();
+        private readonly List<MusicItem> queue = new List<MusicItem>();
         private Dictionary<string, string> settings_data;
         private MidiIn midiDevice;
-        private Thread t_progressBar;
-        private int elapsed = 0;
         Device d = null;
-        int trackPlaying = 0;
+        Object lb_sel_item;
+
         public Player()
         {
             InitializeComponent();
@@ -31,15 +29,9 @@ namespace MidiPlayer
 
         private void InitMidiDevice()
         {
-            if (settings_data["midiin"] == null || settings_data["midiin"].Length == 0)
-            {
-                return;
-            }
-
-            if (!TryCreateDevice(out midiDevice))
-            {
+            if (settings_data["midiin"] == null || settings_data["midiin"].Length == 0) return;
+            if (!TryCreateMIDIDevice(out midiDevice)) 
                 throw new Exception("Unable to create device!");
-            }
 
             midiDevice.MessageReceived += midiIn_MessageReceived;
             midiDevice.ErrorReceived += midiIn_ErrorReceived;
@@ -61,26 +53,18 @@ namespace MidiPlayer
             {
                 if (e.MidiEvent.CommandCode == MidiCommandCode.ControlChange && int.Parse(split_message[split_message.Length - 3]) == 33 && int.Parse(split_message[split_message.Length - 1]) == 127)
                 {
-                    /*if (d == null)
-                        d = new Device();
-                        //d = new Device(settings_data);
-                    Console.WriteLine(d.GetSongsPlayed());
-                    if (d.GetSongsPlayed() >= musicPaths.Count)
-                        return;
-                    d.Play(musicPaths[d.GetSongsPlayed()].ToString());
-                    */
                     if (d == null)
                         d = new Device();
                     Console.WriteLine(d.GetSongsPlayed());
-                    if (d.GetSongsPlayed() >= musicPaths.Count)
+                    if (d.GetSongsPlayed() >= queue.Count)
                         return;
-                    d.Play(musicPaths[d.GetSongsPlayed()].GetPath());
+                    d.Play(queue[d.GetSongsPlayed()].path);
 
                     if (d.Playing())
                     {
                         Console.WriteLine("Updating lb");
-                        //ListBox1.Items.RemoveAt(0);
-                        //UpdateListBox();
+                        this.Invoke((MethodInvoker)(()=> ListBox1.Items.RemoveAt(0)));
+                        UpdateListBox();
                     }
 
                 }
@@ -91,14 +75,9 @@ namespace MidiPlayer
                 Console.WriteLine(ex.ToString());
             }
 
-            /*if (!d.Playing())
-            {
-                UpdateListBox();
-            }*/
-
         }
 
-        private bool TryCreateDevice(out MidiIn device)
+        private bool TryCreateMIDIDevice(out MidiIn device)
         {
             device = null;
             try
@@ -117,7 +96,6 @@ namespace MidiPlayer
             }
             catch (Exception ex)
             {
-
                 return false;
             }
         }
@@ -137,7 +115,7 @@ namespace MidiPlayer
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
                 ofd.InitialDirectory = "c:\\";
-                ofd.Filter = "Audio files | *.MP3; *.WAV | All files |*.*";
+                ofd.Filter = "Audio files (.mp3,.wav)|*.mp3;*.wav|All files|*.*";
                 ofd.Multiselect = true;
                 ofd.Title = "Select the audio files to be played";
                 DialogResult dr = ofd.ShowDialog();
@@ -145,12 +123,12 @@ namespace MidiPlayer
                 {
                     // string stores the path of selected files
                     MusicItem item;
-                    int itemIndex = (musicPaths.Count == 0) ? 0: musicPaths.Count+1;
+                    int itemIndex = (queue.Count == 0) ? 0: queue.Count+1;
                     for (int i = 0; i < ofd.FileNames.Length; i++, itemIndex++)
                     {
                         item = new MusicItem(i, ofd.FileNames[i]);
-                        if (!musicPaths.Contains(item))
-                            musicPaths.Add(item);
+                        if (!queue.Contains(item))
+                            queue.Add(item);
                     }
                 }
 
@@ -162,10 +140,10 @@ namespace MidiPlayer
         private void InitQueueListBox()
         {
             ListBox1.Items.Clear();
-            ListBox1.DrawMode = DrawMode.OwnerDrawFixed;
-            ListBox1.DrawItem += ListBox_DrawItem;
-            for (int i = 0; i < musicPaths.Count; i++)
-                ListBox1.Items.Add(i + ": " + musicPaths[i].GetFileName()); // formats the string so only the name of the file is displayed
+            //ListBox1.DrawMode = DrawMode.OwnerDrawFixed;
+            //ListBox1.DrawItem += ListBox_DrawItem;
+            for (int i = 0; i < queue.Count; i++)
+                ListBox1.Items.Add(i + ": " + queue[i].GetFileName()); // formats the string so only the name of the file is displayed
         }
 
         #region List box drag and drop fucntionality
@@ -178,7 +156,7 @@ namespace MidiPlayer
             this.ListBox1.Items.Remove(data);
             this.ListBox1.Items.Insert(index, data.ToString());
 
-            //update the musicPaths arraylist accordingly
+            //update the queue arraylist accordingly
             int oldIdx = int.Parse(data.ToString().Split(':')[0]);
             UpdateListBox();
             UpdatePathList(oldIdx, index);
@@ -192,15 +170,15 @@ namespace MidiPlayer
         private void UpdatePathList(int oldIdx, int newIdx)
         {
             
-            musicPaths[oldIdx].SetId(newIdx);
+            queue[oldIdx].SetId(newIdx);
             if (oldIdx < newIdx)
                 for (int i = newIdx; i > oldIdx; i--)
-                    musicPaths[i].SetId(i - 1);
+                    queue[i].SetId(i - 1);
             else
                 for (int i = newIdx; i < oldIdx; i++)
-                    musicPaths[i].SetId(i+1);
+                    queue[i].SetId(i+1);
 
-            musicPaths.Sort();
+            queue.Sort();
         }
 
         private void ListBox1_DragEnter(object sender, DragEventArgs e)
@@ -213,7 +191,9 @@ namespace MidiPlayer
 
         private void ListBox1_MouseDown(object sender, MouseEventArgs e)
         {
-            if (ListBox1.SelectedItem == null) return;
+            //Console.WriteLine(ListBox1.SelectedItem is null);
+            if (ListBox1.SelectedItem is null) return;
+            this.lb_sel_item = ListBox1.SelectedItem;
             ListBox1.DoDragDrop(ListBox1.SelectedItem, DragDropEffects.Move);
         }
         #endregion
@@ -257,9 +237,9 @@ namespace MidiPlayer
             if (d == null)
                 d = new Device();
             Console.WriteLine(d.GetSongsPlayed());
-            if (d.GetSongsPlayed() >= musicPaths.Count)
+            if (d.GetSongsPlayed() >= queue.Count)
                 return;
-            d.Play(musicPaths[d.GetSongsPlayed()].GetPath());
+            d.Play(queue[d.GetSongsPlayed()].path);
 
             if (d.Playing())
             {
@@ -272,11 +252,33 @@ namespace MidiPlayer
         private void button2_Click(object sender, EventArgs e)
         {
             if (d == null) return;
-            if (d.Playing())
-                d.Stop();
+            if (d.Playing()) d.Stop();
+
             //resets the songs played counter to 0 and reinitalizes the queue display
             d.SetSongsPlayed();
             InitQueueListBox();
+        }
+    
+
+        //remove logic
+        //needs testing
+        private void RemoveItemBtn_Click(object sender, EventArgs e)
+        {
+            if (this.lb_sel_item is null) return;
+            string formatted_item = this.lb_sel_item.ToString().Substring(this.lb_sel_item.ToString().IndexOf(':') + 1).Trim();
+            //itterate through every item, and remove the selected one
+            foreach (MusicItem item in queue)
+            {
+                //Console.WriteLine($"Filename: {item.GetFileName()}\nlb_selitem: {formatted_item}\nbool:{item.GetFileName().Equals(formatted_item)}");
+                if (item.GetFileName().Equals(formatted_item))
+                {
+                    ListBox1.Items.Remove(this.lb_sel_item);
+                    this.queue.Remove(new MusicItem(item.ID,item.path));
+                    UpdateListBox();
+                    lb_sel_item = null; //null the item
+                    break;
+                }
+            }
         }
     }
 
