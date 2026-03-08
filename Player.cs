@@ -61,13 +61,27 @@ namespace MidiPlayer
             {
                 if (e.MidiEvent.CommandCode == MidiCommandCode.ControlChange && int.Parse(split_message[split_message.Length - 3]) == 33 && int.Parse(split_message[split_message.Length - 1]) == 127)
                 {
-                    if (d == null)
+                    /*if (d == null)
                         d = new Device();
                         //d = new Device(settings_data);
                     Console.WriteLine(d.GetSongsPlayed());
                     if (d.GetSongsPlayed() >= musicPaths.Count)
                         return;
                     d.Play(musicPaths[d.GetSongsPlayed()].ToString());
+                    */
+                    if (d == null)
+                        d = new Device();
+                    Console.WriteLine(d.GetSongsPlayed());
+                    if (d.GetSongsPlayed() >= musicPaths.Count)
+                        return;
+                    d.Play(musicPaths[d.GetSongsPlayed()].GetPath());
+
+                    if (d.Playing())
+                    {
+                        Console.WriteLine("Updating lb");
+                        //ListBox1.Items.RemoveAt(0);
+                        //UpdateListBox();
+                    }
 
                 }
             }

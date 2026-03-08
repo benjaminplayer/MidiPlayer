@@ -4,11 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using System.Windows.Forms;
 
 namespace MidiPlayer
 {
-    //TODO: Reimpliment audio with wasapi -> Done?
     public class Device : IDisposable
     {
         private bool _disposed = false;
@@ -79,16 +77,18 @@ namespace MidiPlayer
             switch (data["outputtype"])
             {
                 case "WINDOWS_AUDIO":
+                    PrintOutDevices();
                     output = new WasapiOut(new MMDeviceEnumerator().GetDevice(deviceID), AudioClientShareMode.Shared, true, 100);
+                    Console.WriteLine("OUTPUT BE LIKE: "+deviceID);
                     break;
                 case "DIRECT_SOUND":
                     throw new NotImplementedException();
                 case "ASIO":
                     Console.WriteLine("Outputdevice:" + data["outputdevice"]);
                     string[] s = AsioOut.GetDriverNames();
-
+                    /*
                     foreach (string s1 in s)
-                        Console.WriteLine(s1);
+                        Console.WriteLine(s1);*/
 
                     Thread asio_creation = new Thread(() =>
                     {
@@ -129,23 +129,33 @@ namespace MidiPlayer
         }
 
         private void PlayThread()
-        { 
+        {
             using (var ar = new AudioFileReader(this.track))
-            using (output)
             {
-                trackLength = ar.TotalTime;
-                int elapsed = 0;
-                //idk why dis has to be like this but otherwise it doesn't work :)
-                output.Init(ar);
-                output.Play();
-                while (output.PlaybackState == PlaybackState.Playing && elapsed <= (int)trackLength.TotalSeconds)
+                try
                 {
-                    //Console.WriteLine("Outputdevice playback state:" + outputDevice.PlaybackState.ToString());
-                    elapsed++;
-                    Thread.Sleep(1000);
+                    using (output)
+                    {
+                        trackLength = ar.TotalTime;
+                        int elapsed = 0;
+                        //idk why dis has to be like this but otherwise it doesn't work :)
+                        output.Init(ar);
+                        output.Play();
+                        while (output.PlaybackState == PlaybackState.Playing && elapsed <= (int)trackLength.TotalSeconds)
+                        {
+                            elapsed++;
+                            Thread.Sleep(1000);
+                        }
+                    }
+                    SongsPlayed++;
                 }
-            }
-            SongsPlayed++;
+                catch (Exception ex)
+                {
+                    //Console.WriteLine(ex.StackTrace);
+                }
+            
+            } 
+
         }
 
         public void Stop()
@@ -207,10 +217,17 @@ namespace MidiPlayer
             }
             else if (output != null && !(output is IDisposable))
                 throw new Exception("The output cannot be disposed!");
-            /*else
-                throw new Exception("Exception reached while trying to update output device!");*/
         }
 
+
+        public void PrintOutDevices()
+        {
+
+            foreach (var device in new MMDeviceEnumerator().EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
+            {
+                Console.WriteLine("device id: "+ device.ID+"\ndevice name: "+device.FriendlyName);
+            }
+        }
 
     }
 }
