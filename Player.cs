@@ -30,8 +30,9 @@ namespace MidiPlayer
         private void InitMidiDevice()
         {
             if (settings_data["midiin"] == null || settings_data["midiin"].Length == 0) return;
-            if (!TryCreateMIDIDevice(out midiDevice)) 
-                throw new Exception("Unable to create device!");
+            if (!TryCreateMIDIDevice(out midiDevice))
+                midiDevice = null;
+                //throw new Exception("Unable to create device!");
 
             midiDevice.MessageReceived += midiIn_MessageReceived;
             midiDevice.ErrorReceived += midiIn_ErrorReceived;

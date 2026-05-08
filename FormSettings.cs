@@ -231,12 +231,33 @@ namespace MidiPlayer
                         tgt.Dispose();
                     }
 
+                    var temp = (new MMDeviceEnumerator().GetDevice(dataMap["outputdevice"]));
+
+                    Console.WriteLine(temp.State);
+
+                    if (temp.State == DeviceState.Unplugged)
+                    {
+
+                        Console.WriteLine("rawr");
+                        var tgt = new MMDeviceEnumerator().GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                        dataMap["outputdevice"] = tgt.ID;
+                        target = tgt.ToString();
+                        tgt.Dispose();
+                    }
+
                     for(int i = 0; i < devices.Count;i++)
                     {
                         OutputDevices.Items.Add(devices[i].ToString());
                         if (target.Equals(devices[i].ToString()))
                             idx = i;
                     }
+
+                    var dv = new MMDeviceEnumerator().GetDevice(dataMap["outputdevice"]);
+                    Console.WriteLine("updating device out");
+                    Console.WriteLine("device id: "+dv.ID);
+
+         //         var dv = new MMDeviceEnumerator().GetDevice(dataMap["outputdevice"]), AudioClientShareMode.Shared,true,100);
+                    //Console.WriteLine();
                     Device.UpdateOutput(new WasapiOut(new MMDeviceEnumerator().GetDevice(dataMap["outputdevice"]),AudioClientShareMode.Shared,true,100));
                     break;
                 case DeviceType.DIRECT_SOUND:
@@ -311,6 +332,8 @@ namespace MidiPlayer
                 case DeviceType.WINDOWS_AUDIO:
                     //Updates the device info in the datamap, and the device class
                     string deviceID = GetOutputID(OutputDevices.Items[OutputDevices.SelectedIndex].ToString());
+                    Console.WriteLine($"device id: {deviceID}");
+                    dataMap["outputdevice"] = deviceID;
                     Device.UpdateOutput(new WasapiOut(new MMDeviceEnumerator().GetDevice(deviceID), AudioClientShareMode.Shared,true,100));
                     break;
                 case DeviceType.DIRECT_SOUND:
@@ -486,6 +509,7 @@ namespace MidiPlayer
 
         private void Settings_Leave(object sender, EventArgs e)
         {
+            Console.WriteLine("saving ze file");
             SaveFile();
         }
 

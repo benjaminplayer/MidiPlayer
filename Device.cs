@@ -25,14 +25,6 @@ namespace MidiPlayer
             this.asioOutputChannel = asioOutChannel;
         }
 
-        //test, mayhaps obselete
-        public Device(dynamic outputDevice, int asioOutChannel = 0)
-        {
-            output = outputDevice;
-            this.asioOutputChannel = asioOutChannel;
-            this.data = Settings.GetSettingsData();
-        }
-
         public void Dispose()
         {
             Dispose(true);
@@ -77,9 +69,7 @@ namespace MidiPlayer
             switch (data["outputtype"])
             {
                 case "WINDOWS_AUDIO":
-                    PrintOutDevices();
                     output = new WasapiOut(new MMDeviceEnumerator().GetDevice(deviceID), AudioClientShareMode.Shared, true, 100);
-                    Console.WriteLine("OUTPUT BE LIKE: "+deviceID);
                     break;
                 case "DIRECT_SOUND":
                     throw new NotImplementedException();
@@ -130,6 +120,9 @@ namespace MidiPlayer
 
         private void PlayThread()
         {
+            Console.WriteLine("these are in devices:");
+            PrintOutDevices();
+
             using (var ar = new AudioFileReader(this.track))
             {
                 try
@@ -210,6 +203,7 @@ namespace MidiPlayer
         /// <exception cref="Exception"></exception>
         public static void UpdateOutput(dynamic newOut)
         {
+            //Console.WriteLine("new out: "+newOut);
             if (output != null && output is IDisposable)
             {
                 output.Dispose();
